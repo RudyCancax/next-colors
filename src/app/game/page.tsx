@@ -1,7 +1,7 @@
 "use client";
 
 // src/app/game/page.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import ConfettiBackground from "@/components/ConfettiBackground";
 import Confetti from "@/components/Confetti";
@@ -31,6 +31,12 @@ const Bottle = ({ color }: { color: string }) => (
   />
 );
 
+const playSound = (src: string, infinite = false) => {
+  const audio = new Audio(src);
+  audio.play();
+  return audio; // Return the audio object for further control
+};
+
 export default function Game() {
   const [selectedLevel, setSelectedLevel] = useState<Level>("easy");
   const [colorSequence, setColorSequence] = useState<string[]>([]);
@@ -41,6 +47,7 @@ export default function Game() {
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
+  const clockAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (timeLeft === 0 && isGameActive) {
@@ -49,6 +56,11 @@ export default function Game() {
       setModalMessage("FELICIDADES GANASTE"); // Set message for the modal
       setIsModalOpen(true); // Open the modal
       if (intervalId) clearInterval(intervalId);
+      if (clockAudioRef.current) {
+        clockAudioRef.current.pause(); // Stop clock sound
+        clockAudioRef.current.currentTime = 0; // Reset playback position
+      }
+      playSound("/sounds/tada.mp3"); // Play win sound
     }
   }, [timeLeft, isGameActive, intervalId]);
 
@@ -58,7 +70,22 @@ export default function Game() {
         setTimeLeft((prev) => (prev !== null ? prev - 1 : null));
       }, 1000);
       setIntervalId(id);
-      return () => clearInterval(id);
+
+      // Play clock sound
+      if (clockAudioRef.current) {
+        clockAudioRef.current.play(); // Resume playback if already exists
+      } else {
+        const audio = playSound("/sounds/clock2.mp3", true);
+        clockAudioRef.current = audio; // Store the audio reference
+      }
+
+      return () => {
+        clearInterval(id);
+        if (clockAudioRef.current) {
+          clockAudioRef.current.pause(); // Stop clock sound
+          clockAudioRef.current.currentTime = 0; // Reset playback position
+        }
+      };
     }
   }, [isGameActive, timeLeft]);
 
@@ -83,6 +110,9 @@ export default function Game() {
     handleGenerateDuration();
     setIsGameActive(true);
     setShowConfetti(false); // Hide confetti at the start of the game
+    if (clockAudioRef.current) {
+      clockAudioRef.current.play(); // Resume playback if audio already exists
+    }
   };
 
   const handleStopGame = () => {
@@ -91,6 +121,11 @@ export default function Game() {
     setTimeLeft(null);
     setModalMessage("PERDISTE"); // Set message for the modal
     setIsModalOpen(true); // Open the modal
+    if (clockAudioRef.current) {
+      clockAudioRef.current.pause(); // Stop clock sound
+      clockAudioRef.current.currentTime = 0; // Reset playback position
+    }
+    playSound("/sounds/risa.mp3"); // Play lose sound
   };
 
   const closeModal = () => {
