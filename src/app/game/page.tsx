@@ -128,9 +128,69 @@ export default function Game() {
     playSound("/sounds/risa.mp3"); // Play lose sound
   };
 
+  const handleGame = (status: "win" | "lose") => {
+    console.log("GAME: ", status);
+
+    if (intervalId) clearInterval(intervalId);
+    setIsGameActive(false);
+    setTimeLeft(null);
+    setModalMessage(status === "win" ? "FELICIDADES GANASTE" : "PERDISTE"); // Set message for the modal
+    setIsModalOpen(true); // Open the modal
+    if (clockAudioRef.current) {
+      clockAudioRef.current.pause(); // Stop clock sound
+      clockAudioRef.current.currentTime = 0; // Reset playback position
+    }
+    handleLed(status === "win" ? "on" : "off");
+    if (status === "lose") {
+      handleServo("reset");
+    }
+
+    playSound(status === "win" ? "/sounds/tada.mp3" : "/sounds/risa.mp3"); // Play win or lose sound
+
+    setTimeout(() => {
+      handleServo(90);
+    }, 3000);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setShowConfetti(false); // Optionally hide confetti or redirect
+  };
+
+  const handleLed = async (state: string) => {
+    console.log("ON LED");
+
+    const response = await fetch(`http://localhost:3000/led/${state}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+
+    const data = await response.text();
+    return data;
+  };
+
+  const handleServo = async (state: 90 | 180 | "reset") => {
+    console.log("SERVO: ", state);
+
+    const response = await fetch(`http://localhost:3000/servo/${state}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+
+    const data = await response.text();
+    return data;
   };
 
   return (
@@ -145,12 +205,59 @@ export default function Game() {
         />
       )}
 
-      <button
-        onClick={() => (window.location.href = "/")}
-        className="absolute top-4 left-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-      >
-        Regresar al Home
-      </button>
+      <div className="absolute top-4 left-4 flex flex-col items-center mt-8 space-y-4 z-[100]">
+        <button
+          onClick={() => (window.location.href = "/")}
+          className=" bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          Regresar al Home
+        </button>
+        {/* ON LED */}
+        <button
+          onClick={() => handleLed("on")}
+          className="ml-2 bg-green-500 hover:bg-gree-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          ON LED
+        </button>
+        {/* OFF LED */}
+        <button
+          onClick={() => handleLed("off")}
+          className="ml-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          OFF LED
+        </button>
+        <hr />
+        <button
+          onClick={() => handleServo(90)}
+          className="ml-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          ROTATE SERVO 90
+        </button>
+        <button
+          onClick={() => handleServo(180)}
+          className="ml-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          ROTATE SERVO 180
+        </button>
+        <button
+          onClick={() => handleServo("reset")}
+          className="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          RESET SERVO
+        </button>
+        <button
+          onClick={() => handleGame("win")}
+          className="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          WIN GAME
+        </button>
+        <button
+          onClick={() => handleGame("lose")}
+          className="ml-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+        >
+          LOSE GAME
+        </button>
+      </div>
 
       <div className="flex flex-col items-center mt-8 space-y-4">
         {/* Selector de Nivel de Dificultad */}
