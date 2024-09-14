@@ -5,8 +5,6 @@ import ConfettiBackground from "@/components/ConfettiBackground";
 import Modal from "@/components/Modal";
 import Bottles from "@/components/Bottles";
 
-export const runtime = "edge";
-
 type Level = "easy" | "medium" | "hard";
 
 const levels: Record<Level, number> = {

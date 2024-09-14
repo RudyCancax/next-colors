@@ -7,11 +7,7 @@ import BubblesBackground from "@/components/BubblesBackground";
 import ConfettiBackground from "@/components/ConfettiBackground";
 import { useRouter } from "next/navigation";
 
-export const runtime = "edge";
-
 export default function Home() {
-  // const [showConfetti, setShowConfetti] = useState(false);
-
   const router = useRouter(); // Inicializa useRouter
 
   const handleStartGame = () => {
