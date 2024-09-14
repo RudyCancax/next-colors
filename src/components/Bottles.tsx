@@ -2,7 +2,7 @@ const Bottles = ({ fill = "#e0e0e0" }) => (
   <>
     <svg
       version="1.0"
-      width="1280.000000pt"
+      width="600.000000pt"
       height="1066.000000pt"
       viewBox="0 0 1280.000000 1066.000000"
       preserveAspectRatio="xMidYMid meet"

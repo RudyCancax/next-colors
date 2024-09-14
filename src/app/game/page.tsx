@@ -46,10 +46,12 @@ const getRandomColor = (usedColors: string[]) => {
 const Bottle = ({ color }: { color: string; onClick?: () => void }) => (
   <div className="flex flex-col justify-center w-56">
     <div className="flex flex-col">
-      <h1 className="translate-x-[660px] translate-y-[1200px] text-[#000a1dc9] font-bold text-6xl ">
-        {colorsNames[colors.indexOf(color)]}
+      <h1 className="translate-x-[230px] translate-y-[1150px] text-[#000a1dc9] font-bold text-5xl ">
+        {colorsNames[colors.indexOf(color)]}{" "}
       </h1>
-      <Bottles fill={color} />
+      <div className="translate-x-[-100px]">
+        <Bottles fill={color} />
+      </div>
     </div>
   </div>
 );
@@ -176,14 +178,13 @@ export default function Game() {
     setIsGameActive(false);
     setIsPaused(false);
     setTimeLeft(null);
-    setModalMessage("PERDISTE"); // Set message for the modal
-    setIsModalOpen(true); // Open the modal
     setCanMixColors(true); // Allow color mixing again
+    setShowBottles(Array(colorSequence.length).fill(true)); // Show bottles initially
+    setShowBoxes(Array(colorSequence.length).fill(false)); // Hide boxes initially
     if (clockAudioRef.current) {
       clockAudioRef.current.pause(); // Stop clock sound
       clockAudioRef.current.currentTime = 0; // Reset playback position
     }
-    playSound("/sounds/risa.mp3"); // Play lose sound
   };
 
   const handlePauseGame = () => {
@@ -228,7 +229,7 @@ export default function Game() {
   };
 
   return (
-    <div className="h-full min-h-screen w-full bg-[#000a1dc9] overflow-hidden">
+    <div className="h-full min-h-screen w-full bg-[#000a1dc9]">
       <div className="w-64 flex flex-col space-y-4 p-4 fixed right-0 top-0 bg-gray-800 z-10">
         <button
           className="bg-blue-600 w-full py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300"
@@ -277,7 +278,6 @@ export default function Game() {
             canMixColors ? "blue" : "gray"
           }-700 transition duration-300`}
           onClick={handleMixColors}
-          disabled={!canMixColors}
         >
           Mix Colors
         </button>
@@ -306,7 +306,7 @@ export default function Game() {
         </select>
       </div>
 
-      <div className="flex flex-row z-0 left-10">
+      <div className="flex flex-row z-0 gap-1">
         {colorSequence.map((color, index) => (
           <div key={index} className="">
             {showBoxes[index] ? (
@@ -318,7 +318,7 @@ export default function Game() {
         ))}
       </div>
 
-      <div className="text-[400px] font-bold text-white w-full text-center fixed bottom-10">
+      <div className="text-[300px] font-bold text-white bg-[#000a1d66] px-10 py-0 w-full text-center fixed bottom-10">
         {timeLeft !== null ? timeLeft : 0}
       </div>
 
