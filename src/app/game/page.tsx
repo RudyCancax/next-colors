@@ -46,7 +46,7 @@ const getRandomColor = (usedColors: string[]) => {
 const Bottle = ({ color }: { color: string; onClick?: () => void }) => (
   <div className="flex flex-col justify-center w-56">
     <div className="flex flex-col">
-      <h1 className="translate-x-[230px] translate-y-[1150px] text-[#000a1dc9] font-bold text-5xl ">
+      <h1 className="translate-x-[230px] translate-y-[350px] text-white font-bold text-5xl ">
         {colorsNames[colors.indexOf(color)]}{" "}
       </h1>
       <div className="translate-x-[-100px]">
@@ -229,8 +229,8 @@ export default function Game() {
   };
 
   return (
-    <div className="h-full min-h-screen w-full bg-[#000a1dc9]">
-      <div className="w-64 flex flex-col space-y-4 p-4 fixed right-0 top-0 bg-gray-800 z-10">
+    <div className="h-full min-h-screen w-full bg-[#000a1dc9] overflow-auto">
+      <div className="w-64 flex flex-col space-y-4 p-4 fixed right-0 top-0 bg-gray-800 z-10 overflow-auto">
         <button
           className="bg-blue-600 w-full py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300"
           onClick={handleStartGame}
