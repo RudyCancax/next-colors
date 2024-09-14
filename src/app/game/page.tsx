@@ -1,11 +1,11 @@
 "use client";
 
-// src/app/game/page.tsx
 import { useState, useEffect, useRef } from "react";
-
 import ConfettiBackground from "@/components/ConfettiBackground";
-import Confetti from "@/components/Confetti";
 import Modal from "@/components/Modal";
+import Bottles from "@/components/Bottles";
+
+export const runtime = "edge";
 
 type Level = "easy" | "medium" | "hard";
 
@@ -15,23 +15,58 @@ const levels: Record<Level, number> = {
   hard: 10,
 };
 
-const colors = ["#FF5733", "#33FF57", "#3357FF", "#F5FF33", "#FF33F6"];
+const colors = [
+  "#000000",
+  "#FFFFFF",
+  "#FF0000",
+  "#FFC0CB",
+  "#00BFFF",
+  "#0000FF",
+  "#008000",
+  "#FFFF00",
+  "#6F4F28",
+  "#FFA500",
+];
+const colorsNames = [
+  "negro",
+  "blanco",
+  "rojo",
+  "rosa",
+  "celeste",
+  "azul",
+  "verde",
+  "amarillo",
+  "café",
+  "naranja",
+];
 
-const getRandomColor = () => colors[Math.floor(Math.random() * colors.length)];
+const getRandomColor = (usedColors: string[]) => {
+  const availableColors = colors.filter((color) => !usedColors.includes(color));
+  return availableColors[Math.floor(Math.random() * availableColors.length)];
+};
 
-const Bottle = ({ color }: { color: string }) => (
-  <div
-    className="w-32 h-64 bg-cover rounded-2xl"
-    style={{
-      backgroundImage: `url('/bottles/black.svg')`,
-      backgroundColor: color,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-    }}
-  />
+const Bottle = ({ color }: { color: string; onClick?: () => void }) => (
+  <div className="flex flex-col justify-center w-56">
+    <div className="flex flex-col">
+      <h1 className="translate-x-[660px] translate-y-[1200px] text-[#000a1dc9] font-bold text-6xl ">
+        {colorsNames[colors.indexOf(color)]}
+      </h1>
+      <Bottles fill={color} />
+    </div>
+  </div>
 );
 
-const playSound = (src: string, infinite = false) => {
+const Box = ({ onClick }: { onClick: () => void }) => (
+  <div
+    className="relative flex items-center justify-center w-24 h-56 bg-gray-300 rounded-lg cursor-pointer"
+    onClick={onClick}
+  >
+    {/* Box styling here */}
+    <div className="w-16 h-16 bg-gray-500 rounded-lg"></div>
+  </div>
+);
+
+const playSound = (src: string) => {
   const audio = new Audio(src);
   audio.play();
   return audio; // Return the audio object for further control
@@ -40,32 +75,38 @@ const playSound = (src: string, infinite = false) => {
 export default function Game() {
   const [selectedLevel, setSelectedLevel] = useState<Level>("easy");
   const [colorSequence, setColorSequence] = useState<string[]>([]);
+  const [showBoxes, setShowBoxes] = useState<boolean[]>([]);
+  const [showBottles, setShowBottles] = useState<boolean[]>([]);
   const [gameDuration, setGameDuration] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [isGameActive, setIsGameActive] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
   const clockAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [multiplo, setMultiplo] = useState<number | "">(""); // New state variable for input
+  const [verbotellas, setVerbotellas] = useState<number | "">(""); // New state variable for input
+  const [canMixColors, setCanMixColors] = useState<boolean>(true);
 
   useEffect(() => {
     if (timeLeft === 0 && isGameActive) {
       setIsGameActive(false);
       setShowConfetti(true); // Show confetti when time is up
-      setModalMessage("FELICIDADES GANASTE"); // Set message for the modal
+      setModalMessage("TIEMPO COMPLETADO"); // Set message for the modal
       setIsModalOpen(true); // Open the modal
       if (intervalId) clearInterval(intervalId);
       if (clockAudioRef.current) {
         clockAudioRef.current.pause(); // Stop clock sound
         clockAudioRef.current.currentTime = 0; // Reset playback position
       }
-      playSound("/sounds/tada.mp3"); // Play win sound
+      playSound("/sounds/bells.mp3"); // Play win sound
     }
   }, [timeLeft, isGameActive, intervalId]);
 
   useEffect(() => {
-    if (isGameActive && timeLeft !== null) {
+    if (isGameActive && timeLeft !== null && !isPaused) {
       const id = setInterval(() => {
         setTimeLeft((prev) => (prev !== null ? prev - 1 : null));
       }, 1000);
@@ -75,7 +116,7 @@ export default function Game() {
       if (clockAudioRef.current) {
         clockAudioRef.current.play(); // Resume playback if already exists
       } else {
-        const audio = playSound("/sounds/clock2.mp3", true);
+        const audio = playSound("/sounds/clock2.mp3");
         clockAudioRef.current = audio; // Store the audio reference
       }
 
@@ -86,15 +127,21 @@ export default function Game() {
           clockAudioRef.current.currentTime = 0; // Reset playback position
         }
       };
+    } else if (isPaused) {
+      clearInterval(intervalId!); // Clear interval if paused
     }
-  }, [isGameActive, timeLeft]);
+  }, [isGameActive, timeLeft, isPaused]);
 
   const generateColorSequence = () => {
-    const newSequence = Array.from(
-      { length: levels[selectedLevel] },
-      getRandomColor
-    );
+    const usedColors: string[] = [];
+    const newSequence = Array.from({ length: levels[selectedLevel] }, () => {
+      const color = getRandomColor(usedColors);
+      usedColors.push(color);
+      return color;
+    });
     setColorSequence(newSequence);
+    setShowBoxes(Array(newSequence.length).fill(false)); // Initialize showBoxes state with false
+    setShowBottles(Array(newSequence.length).fill(true)); // Initialize showBottles state with true
   };
 
   const handleLevelChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -102,25 +149,38 @@ export default function Game() {
   };
 
   const handleGenerateDuration = () => {
-    setGameDuration(levels[selectedLevel] * 6);
-    setTimeLeft(levels[selectedLevel] * 6);
+    const multiplier = typeof multiplo === "number" ? multiplo : 6; // Default to 6 if multiplo is not a number
+    setGameDuration(levels[selectedLevel] * multiplier);
+    setTimeLeft(levels[selectedLevel] * multiplier);
   };
 
   const handleStartGame = () => {
-    handleGenerateDuration();
-    setIsGameActive(true);
+    generateColorSequence();
+    setIsGameActive(false);
+    setIsPaused(false);
     setShowConfetti(false); // Hide confetti at the start of the game
-    if (clockAudioRef.current) {
-      clockAudioRef.current.play(); // Resume playback if audio already exists
-    }
+
+    // Show bottles for 3 seconds before showing boxes and starting the timer
+    setShowBottles(Array(colorSequence.length).fill(true)); // Show bottles initially
+    setShowBoxes(Array(colorSequence.length).fill(false)); // Hide boxes initially
+
+    setTimeout(() => {
+      setShowBottles(Array(colorSequence.length).fill(false)); // Hide bottles after 3 seconds
+      setShowBoxes(Array(colorSequence.length).fill(true)); // Show boxes after 3 seconds
+      setIsGameActive(true);
+      setTimeLeft(gameDuration);
+      handleGenerateDuration();
+    }, Number(verbotellas) * 1000);
   };
 
   const handleStopGame = () => {
     if (intervalId) clearInterval(intervalId);
     setIsGameActive(false);
+    setIsPaused(false);
     setTimeLeft(null);
     setModalMessage("PERDISTE"); // Set message for the modal
     setIsModalOpen(true); // Open the modal
+    setCanMixColors(true); // Allow color mixing again
     if (clockAudioRef.current) {
       clockAudioRef.current.pause(); // Stop clock sound
       clockAudioRef.current.currentTime = 0; // Reset playback position
@@ -128,203 +188,150 @@ export default function Game() {
     playSound("/sounds/risa.mp3"); // Play lose sound
   };
 
+  const handlePauseGame = () => {
+    setIsPaused(true);
+  };
+
+  const handleResumeGame = () => {
+    setIsPaused(false);
+  };
+
+  const handleBoxClick = (index: number) => {
+    // if (!isPaused) return;
+    const updatedBoxes = [...showBoxes];
+    const updatedBottles = [...showBottles];
+    updatedBoxes[index] = false;
+    updatedBottles[index] = true;
+    setShowBoxes(updatedBoxes);
+    setShowBottles(updatedBottles);
+  };
+
+  const handleMixColors = () => {
+    if (isGameActive) return; // Disable color mixing if game is active
+    generateColorSequence();
+    setCanMixColors(false);
+  };
+
   const handleGame = (status: "win" | "lose") => {
     console.log("GAME: ", status);
 
     if (intervalId) clearInterval(intervalId);
     setIsGameActive(false);
+    setIsPaused(false);
     setTimeLeft(null);
     setModalMessage(status === "win" ? "FELICIDADES GANASTE" : "PERDISTE"); // Set message for the modal
     setIsModalOpen(true); // Open the modal
+    setCanMixColors(true); // Allow color mixing again
     if (clockAudioRef.current) {
       clockAudioRef.current.pause(); // Stop clock sound
       clockAudioRef.current.currentTime = 0; // Reset playback position
     }
-    handleLed(status === "win" ? "on" : "off");
-    if (status === "lose") {
-      handleServo("reset");
-    }
-
-    playSound(status === "win" ? "/sounds/tada.mp3" : "/sounds/risa.mp3"); // Play win or lose sound
-
-    setTimeout(() => {
-      handleServo(90);
-    }, 3000);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setShowConfetti(false); // Optionally hide confetti or redirect
-  };
-
-  const handleLed = async (state: string) => {
-    console.log("ON LED");
-
-    const response = await fetch(`http://localhost:3000/led/${state}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-
-    const data = await response.text();
-    return data;
-  };
-
-  const handleServo = async (state: 90 | 180 | "reset") => {
-    console.log("SERVO: ", state);
-
-    const response = await fetch(`http://localhost:3000/servo/${state}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-
-    const data = await response.text();
-    return data;
+    playSound(`/sounds/${status === "win" ? "tada.mp3" : "risa.mp3"}`); // Play win or lose sound
   };
 
   return (
-    <div className="relative min-h-screen bg-[#000a1d] overflow-hidden">
-      <ConfettiBackground />
-      {showConfetti && <Confetti />}
-      {isModalOpen && (
-        <Modal
-          isOpen={isModalOpen}
-          message={modalMessage}
-          onClose={closeModal}
-        />
-      )}
-
-      <div className="absolute top-4 left-4 flex flex-col items-center mt-8 space-y-4 z-[100]">
+    <div className="h-full min-h-screen w-full bg-[#000a1dc9] overflow-hidden">
+      <div className="w-64 flex flex-col space-y-4 p-4 fixed right-0 top-0 bg-gray-800 z-10">
         <button
-          onClick={() => (window.location.href = "/")}
-          className=" bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+          className="bg-blue-600 w-full py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300"
+          onClick={handleStartGame}
         >
-          Regresar al Home
-        </button>
-        {/* ON LED */}
-        <button
-          onClick={() => handleLed("on")}
-          className="ml-2 bg-green-500 hover:bg-gree-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-        >
-          ON LED
-        </button>
-        {/* OFF LED */}
-        <button
-          onClick={() => handleLed("off")}
-          className="ml-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-        >
-          OFF LED
-        </button>
-        <hr />
-        <button
-          onClick={() => handleServo(90)}
-          className="ml-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-        >
-          ROTATE SERVO 90
+          Start Game
         </button>
         <button
-          onClick={() => handleServo(180)}
-          className="ml-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+          className="bg-red-600 w-full py-2 rounded-lg shadow-md hover:bg-red-700 transition duration-300"
+          onClick={() => handleStopGame()}
         >
-          ROTATE SERVO 180
+          Stop Game
         </button>
         <button
-          onClick={() => handleServo("reset")}
-          className="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-        >
-          RESET SERVO
-        </button>
-        <button
-          onClick={() => handleGame("win")}
-          className="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
-        >
-          WIN GAME
-        </button>
-        <button
+          className="bg-red-600 w-full py-2 rounded-lg shadow-md hover:bg-red-700 transition duration-300"
           onClick={() => handleGame("lose")}
-          className="ml-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
         >
-          LOSE GAME
+          Lose Game
         </button>
+        <button
+          className="bg-green-600 w-full py-2 rounded-lg shadow-md hover:bg-green-700 transition duration-300"
+          onClick={() => handleGame("win")}
+        >
+          Win Game
+        </button>
+        <button
+          className="bg-yellow-600 w-full py-2 rounded-lg shadow-md hover:bg-yellow-700 transition duration-300"
+          onClick={handleGenerateDuration}
+        >
+          Generate Duration
+        </button>
+        <button
+          className={`bg-${
+            isPaused ? "green" : "yellow"
+          }-600 w-full py-2 rounded-lg shadow-md hover:bg-${
+            isPaused ? "green" : "yellow"
+          }-700 transition duration-300`}
+          onClick={isPaused ? handleResumeGame : handlePauseGame}
+        >
+          {isPaused ? "Resume" : "Pause"}
+        </button>
+        <button
+          className={`bg-${
+            canMixColors ? "blue" : "gray"
+          }-600 w-full py-2 rounded-lg shadow-md hover:bg-${
+            canMixColors ? "blue" : "gray"
+          }-700 transition duration-300`}
+          onClick={handleMixColors}
+          disabled={!canMixColors}
+        >
+          Mix Colors
+        </button>
+        <input
+          type="number"
+          value={typeof multiplo === "number" ? multiplo : ""}
+          onChange={(e) => setMultiplo(Number(e.target.value) || "")}
+          placeholder="Multiplicador"
+          className="p-2 border rounded-lg w-full"
+        />
+        <input
+          type="number"
+          value={typeof verbotellas === "number" ? verbotellas : ""}
+          onChange={(e) => setVerbotellas(Number(e.target.value) || "")}
+          placeholder="VER BOTELLAS / Def: 3"
+          className="p-2 border rounded-lg w-full"
+        />
+        <select
+          className="p-2 border rounded-lg w-full"
+          value={selectedLevel}
+          onChange={handleLevelChange}
+        >
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
       </div>
 
-      <div className="flex flex-col items-center mt-8 space-y-4">
-        {/* Selector de Nivel de Dificultad */}
-        <div className="flex flex-col items-center">
-          <label htmlFor="level" className="text-white text-lg mb-2">
-            Selecciona el Nivel:
-          </label>
-          <select
-            id="level"
-            value={selectedLevel}
-            onChange={handleLevelChange}
-            className="bg-gray-800 text-white border border-gray-600 rounded-lg p-2"
-          >
-            <option value="easy">Fácil</option>
-            <option value="medium">Medio</option>
-            <option value="hard">Difícil</option>
-          </select>
-        </div>
-
-        {/* Botones del Juego */}
-        <div className="flex space-x-4">
-          <button
-            onClick={generateColorSequence}
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg"
-          >
-            Mezclar Colores
-          </button>
-          <button
-            onClick={handleGenerateDuration}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg"
-          >
-            Generar Duración
-          </button>
-          <button
-            onClick={handleStartGame}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg"
-          >
-            Iniciar Juego
-          </button>
-        </div>
-      </div>
-
-      {/* Mostrar Cuadros con Colores */}
-      <div className="flex space-x-4 justify-center mt-8">
+      <div className="flex flex-row z-0 left-10">
         {colorSequence.map((color, index) => (
-          <Bottle key={index} color={color} />
+          <div key={index} className="">
+            {showBoxes[index] ? (
+              <Box onClick={() => handleBoxClick(index)} />
+            ) : (
+              <Bottle color={color} />
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Botón para Detener el Juego */}
-      {isGameActive && (
-        <button
-          onClick={handleStopGame}
-          className="absolute bottom-4 left-4 bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg"
-        >
-          Detener Juego
-        </button>
-      )}
+      <div className="text-[400px] font-bold text-white w-full text-center fixed bottom-10">
+        {timeLeft !== null ? timeLeft : 0}
+      </div>
 
-      {/* Mostrar Tiempo Restante */}
-      {timeLeft !== null && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-full h-1/2 text-white text-6xl">
-          Tiempo Restante:
-          <br />
-          <span className="text-[150px]">{timeLeft}s</span>
-        </div>
+      {isModalOpen && (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          message={modalMessage}
+        />
       )}
+      {showConfetti && <ConfettiBackground />}
     </div>
   );
 }
